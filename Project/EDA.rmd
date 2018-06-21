@@ -1,0 +1,1495 @@
+
+Exploratory Data Analysis of Prosper Loan Distribution 
+
+Kristen Kellerman
+
+========================================================
+
+
+This analysis takes an exploratory look at loan data from Prosper.com between
+2005 and 2014.  The dataset includes more than 110,000  loan entries
+with 81 different variables per entry.  We will explore 17 of those variables
+to discover the who(loan requstors), what(loan amount), why (loan type) and 
+how (criteria for approval) of Prosper clients.
+
+
+The loan variables that we will explore are:
+
+CreditScoreRangeLower
+
+CreditScoreRangeUpper
+
+CurrentCreditLines
+
+CurrentDelinquencies
+
+DebtToIncomeRatio
+
+EmploymentStatus
+
+EstimatedReturn
+
+IncomeRange
+
+ListingCategory
+
+LoanOriginalAmount
+
+Occupation
+
+OpenCreditLines
+
+IsBorrowerHomeOwner
+
+EstimatedLoss
+
+PublicRecordsLast12Months
+
+EffectiveYield
+
+RevolvingCreditBalance
+
+
+```{r Libraries, message=FALSE, warning=FALSE, include=FALSE}
+
+library(ggplot2)
+library(gridExtra)
+library(plyr)
+library(tidyr)
+library(dplyr)
+library(reshape2)
+library(car)
+library(psych)
+library(GGally)
+```
+
+```{r Input Data, message=FALSE, warning=FALSE, include=FALSE}
+      
+loan <- read.csv('prosperLoanData.csv', sep = ',', stringsAsFactors = FALSE)
+```
+
+```{r Working Data, echo=FALSE, message=FALSE, warning=FALSE}
+#creates a dataframe of the variables that I have chosen to investigate.
+
+working_data <- subset(loan, select= c("CreditScoreRangeLower",
+                                       "CreditScoreRangeUpper", 
+                                       "CurrentCreditLines", 
+                                       "CurrentDelinquencies",
+                                       "DebtToIncomeRatio", "EmploymentStatus",
+                                       "EmploymentStatusDuration",
+                                       "EstimatedReturn", "IncomeRange",
+                                       "ListingCategory..numeric.",
+                                       "LoanOriginalAmount", "Occupation",
+                                       "OpenCreditLines",
+                                       "IsBorrowerHomeowner",
+                                       "EstimatedLoss",
+                                       "LenderYield",
+                                       "EstimatedEffectiveYield"))
+```
+
+```{r Working Data Names, echo=FALSE, message=FALSE, warning=FALSE}
+names(working_data)
+```
+
+```{r Working Data Info, echo=FALSE, message=FALSE, warning=FALSE}
+str(working_data)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+summary(working_data)
+
+```
+
+```{r Rename Columns, message=FALSE, warning=FALSE, include=FALSE}
+#Renames ListingCategory..numeric for ease of use.
+colnames(working_data)[colnames(working_data) ==
+                         "ListingCategory..numeric."] <- "ListingCategory"
+
+```
+
+```{r Correct NA, message=FALSE, warning=FALSE, include=FALSE}
+#Sets NA to 0.
+working_data$CreditScoreRangeLower[is.na
+                                   (working_data$CreditScoreRangeLower)] <- 0
+working_data$CreditScoreRangeUpper[is.na
+                                   (working_data$CreditScoreRangeUpper)] <- 0
+working_data$CurrentDelinquencies[is.na(working_data$CurrentDelinquencies)
+                                  ] <- 0
+working_data$CurrentCreditLines[is.na(working_data$CurrentCreditLines)] <- 0
+working_data$DebtToIncomeRatio[is.na(working_data$DebtToIncomeRatio)] <- 0
+working_data$EstimatedReturn[is.na(working_data$EstimatedReturn)] <- 0
+working_data$EstimatedEffectiveYield[is.na(working_data$EstimatedEffectiveYield)
+                                     ] <- 0
+working_data$EstimatedLoss[is.na(working_data$EstimatedLoss)] <- 0
+
+```
+
+
+```{r Convert Special, message=FALSE, warning=FALSE, include=FALSE}
+#Recategorizes special character data.
+working_data$Occupation[working_data$Occupation 
+                        == "Teacher's Aide"] <- "Assistant"
+working_data$Occupation[working_data$Occupation 
+                        == "Nurse's Aide"] <- "Assistant"
+
+#Create a new variable to convert Employment status from months to years
+working_data$EmploymentStatusDuration_Years <- 
+  (working_data$EmploymentStatusDuration / 12)
+#Creates a new variable to convert logical to numeric.
+working_data$HomeOwner <- ifelse(working_data$IsBorrowerHomeowner ==
+                                              "true", 1, 0)
+
+```
+
+```{r Occupation Group, message=FALSE, warning=FALSE, include=FALSE}
+#Refactors Occupation into Categories as defined by ISCO to better organize and visualize.
+working_data$OccupationGroup <- recode(working_data$Occupation,
+"c('Food Service Management', 'Retail Management', 'Executive') = 'Management';
+c('Analyst', 'Investor', 'Medical Technician','Nurse (LPN)',
+'Realtor', 'Assistant') = 'Assistant';
+                                  c('Accountant/CPA', 'Architect', 'Attorney',
+'Biologist', 'Chemist', 'Clergy', 'Computer Programmer', 'Dentist', 'Doctor',
+'Engineer - Chemical', 'Engineer - Electrical', 'Engineer - Mechanical',
+'Judge',  'Nurse (RN)','Pharmacist', 'Pilot - Private/Commercial',
+'Principal', 'Professional', 'Professor', 'Psychologist', 'Religious',
+'Scientist', 'Teacher') = 'Professional';
+                                  c('Administrative Assistant', 'Clerical',
+'Postal Service') = 'Clerical'; c('Car Dealer', 'Civil Service', 'Fireman',
+'Flight Attendant', 'Food Service', 'Police Officer/Correction Officer',
+'Sales - Commission', 'Sales - Retail', 'Social Worker',
+'Waiter/Waitress') = 'Service';
+                                  c('Construction', 'Tradesman - Carpenter',
+'Tradesman - Electrician', 'Tradesman - Mechanic', 'Tradesman - Plumber',
+'Skilled Labor') = 'Trade';
+                                  c('Truck Driver',
+'Bus Driver') = 'Machinery'; c('Laborer', 'Landscaping') = 'Labor';
+                                  c('Military Enlisted',
+'Military Officer') = 'Military';
+                                  c('Homemaker', 'Other',
+'Student - College Freshman', 'Student - College Graduate Student',
+'Student - College Junior', 'Student - College Senior',
+'Student - College Sophomore', 'Student - Community College',
+'Student - Technical School', '' ) = 'Other' ")
+
+```
+
+```{r Convert back to factor, message=FALSE, warning=FALSE, include=FALSE}
+#converts the column types back to their original type
+working_data$IncomeRange <- as.factor(loan$IncomeRange)
+working_data$Occupation <- as.factor(working_data$Occupation)
+working_data$OccupationGroup <- as.factor(working_data$OccupationGroup)
+working_data$EmploymentStatus <- as.factor(working_data$EmploymentStatus)
+working_data$LoanOriginalAmount <- as.numeric(working_data$LoanOriginalAmount)
+
+```
+
+
+```{r CategoryNames, message=FALSE, warning=FALSE, include=FALSE}
+#Refactors Listing Category and bins by Name instead of number.
+working_data$CategoryNames <- factor(working_data$ListingCategory,
+                                     levels = c(0, 1, 2, 3, 4, 5, 6, 7, 8,
+                                                9, 10, 11, 12, 13, 14, 15,
+                                                16, 17, 18, 19, 20),
+                                     labels = c("Not Available",
+                                                "Debt Consolidation",
+                                                "Home Improvement", "Business",
+                                                "Personal Loan", "Student Use",
+                                                "Auto", "Other",
+                                                "Baby & Adoption", "Boat",
+                                                "Cosmetic Procedure",
+                                                "Engagement Ring",
+                                                "Green Loans",
+                                                "Household Expense",
+                                                "Large Purchases",
+                                                "Medical/Dental", "Motorcycle",
+                                                "RV", "Taxes", "Vacation",
+                                                "Wedding Loans"),ordered = TRUE)
+
+
+
+```
+
+```{r Combine Credit Scores, message=FALSE, warning=FALSE, include=FALSE}
+#Combines and averages CreditScoreRangeLower and CreditScoreRangeUpper
+working_data$CreditCombined <- (working_data$CreditScoreRangeLower +
+                                  working_data$CreditScoreRangeUpper) /2
+```
+
+```{r Organize Combined Credit, message=FALSE, warning=FALSE, include=FALSE}
+#Takes combined credit score and refactors into levels and bins.
+working_data$Combined.range <- cut(working_data$CreditCombined,
+                                breaks = c(0, 499, 599, 699, 799, Inf),
+                                labels = c("0-499", "500-599", "600-699",
+                                           "700-799", "800+"),
+                                include.lowest = TRUE)
+
+```
+
+
+##Occupation
+
+
+```{r Occupation Plot, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(aes(x = Occupation),
+       data = loan) +
+  geom_point(stat = 'count') +
+  
+  theme(axis.text.x = element_text(angle = 90, size = 7, hjust = 1, vjust = 0)) +
+  theme(axis.text.y = element_text(size = 7))
+```
+
+
+First we will take a look at the occupation of those who were given loans
+through Prosper.  Almost 1/3 of professions are defined as "Other" and the 
+second largest group is "Professional". 
+
+We will re-organize the data to see if Occupation gives better
+insights of the Occupations likely to receive a loan from Prosper.
+
+
+```{r Plot Occupation Group, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(aes(x = OccupationGroup),
+       data = working_data) +
+  geom_histogram(stat = 'count') +
+  
+  theme(axis.text.x = element_text(angle = 90, size = 7, hjust = 1, vjust = 0)) +
+  theme(axis.text.y = element_text(size = 7))
+
+```
+
+In order to better visualize the data by occupation we re-organize by 
+categories as defined by the International Standard Classification
+of Occupations(ISCO).  
+
+While our two main groups are still Professional and Other, we get a much 
+clearer picture of the break-down of loans by occupational group. 
+
+```{r Employment Occupation, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(aes(x = OccupationGroup),
+       data = working_data) +
+  geom_histogram(stat = 'count') +
+  facet_wrap(~ EmploymentStatus) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+  
+```
+
+```{r Employment Status Summary, echo=FALSE, message=FALSE, warning=FALSE}
+summary(working_data$EmploymentStatus)
+
+```
+
+Evaluating employment status seemed to be another logical variable to 
+investigate in determining who the loan requestor is however it is a dead end.
+The criteria used and the dispersion of values are not useful.  It is 
+interesting and perplexing to see that this value seems to have so little 
+importance.  
+
+```{r EmploymentDurationYears, echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(aes(x = EmploymentStatusDuration_Years),
+       data = subset(working_data, !is.na(EmploymentStatusDuration_Years))) +
+  geom_histogram(color = 'black') 
+  
+
+```
+
+Employment status duration is in months so we will convert it to years for 
+clarity.  It looks like there may be considerable outliers here or there are a
+number of loan requestors are at least 80 years of age.  If the latter is the
+case this would be quite surprising because Prosper's loan process is 
+completely internet based.
+
+```{r EmploymentStatusYears5, echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(aes(x = EmploymentStatusDuration_Years),
+       data = subset(working_data, !is.na(EmploymentStatusDuration_Years))) +
+  geom_histogram(binwidth = 1, color = 'black') +
+  scale_x_continuous(limits = c(0,45), breaks = seq(0,45,5)) 
+
+```
+
+```{r EmploymentStatusYears Summary, message=FALSE, warning=FALSE}
+summary(working_data$EmploymentStatusDuration_Years)
+
+```
+
+The average time working is less than 10 years, with 75% of loan requestors
+spending 11 years in their job.  
+
+```{r Income Range Plot, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(aes(x = IncomeRange),
+       data = working_data) +
+  geom_histogram(stat = 'count') +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+
+```
+
+```{r Income Range Summary, echo=FALSE, message=FALSE, warning=FALSE}
+summary(working_data$IncomeRange)
+```
+
+The choice was made to look at the Income Range from the dataset because
+it seemed less likely for a loan applicant to exaggerate income versus 
+declaring a single income amount.  This gives us the opportunity to 
+examine other factors more thoroughly than interrogating the validity of
+income information. 
+
+```{r OccGroup Income, echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(aes(x = OccupationGroup),
+       data = working_data) +
+  geom_histogram(stat = 'count') +
+  facet_wrap(~ IncomeRange) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+
+```
+
+
+##Credit
+
+Prosper uses its own grading system for categorizing a loan requestor instead
+of traditional FICO score.  The data available is not sufficient to derive
+how this scoring system equates to traditional methods.  We decided to use
+the more traditional metric of credit score to shape the view of our loan 
+requestor, and thus the variables CreditScoreRangeUpper and 
+CreditScoreRangeLower are used.  
+
+```{r Credit Upper Plots, echo=FALSE, message=FALSE, warning=FALSE}
+upper <- ggplot(aes(x = CreditScoreRangeUpper),
+       data = working_data) +
+  geom_histogram(color = 'black') +
+  theme(axis.text.y = element_text(size = 7))
+
+upper2 <- upper + scale_x_sqrt(limits = c(450, 900),
+                                breaks = seq(450, 900, 50)) +
+  scale_y_continuous(breaks = seq(0, 20000, 2500)) 
+
+lower <- ggplot(aes(x = CreditScoreRangeLower),
+       data = working_data) +
+  geom_histogram( color = 'black')  +
+  theme(axis.text.y = element_text(size = 7)) 
+
+lower2 <- lower + scale_x_sqrt(limits = c(450, 900),
+                                breaks = seq(450, 900, 50)) +
+  scale_y_continuous(breaks = seq(0, 20000, 2500))
+
+grid.arrange(upper, upper2, lower, lower2, ncol = 2)
+
+```
+
+```{r Credit Upper Summary, echo=FALSE, message=FALSE, warning=FALSE}
+summary(working_data$CreditScoreRangeUpper)
+summary(working_data$CreditScoreRangeLower)
+```
+
+Evaluating the upper  and lowercredit score limit of the requestor is gives us 
+an unexpected picture of the distribution of the upper credit scores.  While it 
+does reflect the quantile breakdown of the credit score it is worth noting
+that we can propose that in order to qualify for a Prosper Loan the 
+requestor stands a significantly higher chance if the  credit score is 
+above 650. 
+
+```{r Cut Upper Range, echo=FALSE, message=FALSE, warning=FALSE}
+# Refactors CreditScoreRangeUpper into Ordered levels and bins.
+working_data$Upper.range <- cut(working_data$CreditScoreRangeUpper,
+                                breaks = c(0, 499, 599, 699, 799, Inf),
+                                labels = c("0-499", "500-599", "600-699",
+                                           "700-799", "800+"),
+                                include.lowest = TRUE)
+
+```
+
+```{r Lower range column created, echo=FALSE, message=FALSE, warning=FALSE}
+# Refactors CreditScoreRangeLower into Ordered levels and bins.
+working_data$Lower.range <- cut(working_data$CreditScoreRangeLower,
+                                breaks = c(0, 499, 599, 699, 799, Inf),
+                                labels = c("0-499", "500-599", "600-699",
+                                           "700-799", "800+"),
+                                include.lowest = TRUE)
+
+
+```
+
+```{r Credit Score Grid Plot, echo=FALSE, message=FALSE, warning=FALSE}
+upper_range <- ggplot(aes(x = Upper.range),
+       data = working_data) +
+  geom_histogram(stat = 'count')
+
+lower_range <- ggplot(aes(x = Lower.range),
+       data = subset(working_data, !is.na(Lower.range))) +
+    geom_bar(stat = 'count')
+
+grid.arrange(upper_range, lower_range, ncol = 2)
+```
+
+It is important to note that the values of 0 - 499 also contain missing
+data from the dataset.  Specifically there were 451 values with no score.  
+The decision was made to include the data as a zero value because it had 
+no impact on the overall values and did not affect the determination of who 
+the loan requestor target is for a Prosper loan.
+
+
+When we group upper credit scores it becomes more apparent that the majority
+of requestors have an upper credit score between 600 and 799.
+
+
+The lower credit score range is equally insightful with the majority of 
+credit scores concentrated between 650 and 750.  This also coincides with the
+upper credit score values indicating that there may not be a significant 
+variance from upper to lower credit scores.
+
+
+The results of categorization of the lower range returns the expected result.
+The lower range is not different from the upper range in value count. This 
+tells us that either the requestor's credit score was stable over time or that
+the initial request and second request were within a short time period.
+
+
+```{r Combined Credit, echo=FALSE, message=FALSE, warning=FALSE, , echo=FALSE}
+
+
+credcombo <- ggplot(aes(x = CreditCombined),
+       data =  working_data) +
+    geom_histogram(color = 'black')  +
+  theme(axis.text.y = element_text(size = 7))
+
+credcombo2 <- credcombo +
+  scale_x_sqrt(limits = c(500, 900), breaks = seq(500, 900, 50))
+
+grid.arrange(credcombo, credcombo2, ncol = 2)
+
+```
+
+```{r Summary Combined Credit, echo=FALSE, message=FALSE, warning=FALSE}
+
+summary(working_data$CreditCombined)
+
+
+```
+
+```{r Credit Lower Plot, echo=FALSE, message=FALSE, warning=FALSE}
+
+upper_range <- ggplot(aes(x = Upper.range),
+       data = working_data) +
+  geom_histogram(stat = 'count')
+
+lower_range <- ggplot(aes(x = Lower.range),
+       data = subset(working_data, !is.na(Lower.range))) +
+    geom_bar(stat = 'count')
+
+comb_range <- ggplot(aes(x = Combined.range),
+       data =  working_data) +
+    geom_bar(stat = 'count')
+
+grid.arrange(upper_range, lower_range, comb_range, ncol = 1)
+  
+```
+
+The distribution across upper and lower when combined do not change.  
+
+```{r Occupation Credit, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(aes(x = OccupationGroup),
+       data = working_data) +
+  geom_histogram(stat = 'count') +
+  facet_wrap(~ Combined.range) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = .5)) 
+  
+
+```
+
+Evaluating by occupation supports the claim that in order to successful in 
+the loan application process a requestor should have a score of at least 600.
+
+```{r Occupation Credit Summary, echo=FALSE, message=FALSE, warning=FALSE, , echo=FALSE}
+
+working_data %>%
+  group_by("Occupation" = OccupationGroup) %>%
+  summarise("Lower" = mean (CreditScoreRangeLower),
+            "Upper" = mean(CreditScoreRangeUpper),
+            "Combined" = mean(CreditCombined))
+  
+```
+
+Once we average the lower and upper credit scores it is then that we begin
+to see the data shift slightly.  The mean credit score across all groups
+drops slightly.  Although there is a slight shift it solidifies the acceptable
+range for credit score when applying for a Prosper loan.
+
+
+
+#Loan Amount
+
+
+```{r Original Loan Amount, echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(aes(x = LoanOriginalAmount),
+        data = working_data) +
+   geom_histogram(color = 'black')
+ 
+```
+
+```{r Summary Original Loan Amount, echo=FALSE, message=FALSE, warning=FALSE}
+
+summary(working_data$LoanOriginalAmount)
+
+```
+
+We can see that 75% of the loans are between 1000 and 12,000 with a few loans
+reaching 35000.  The loan amounts are relatively low which may be an indicator
+that these loans are intended for more personal use than  a major purchase.
+
+```{r Loan Amount as factor, echo=FALSE, message=FALSE, warning=FALSE}
+#Refactors LoanOriginalAmount into factor levels and bins in order.
+working_data$LoanGroup <- cut(working_data$LoanOriginalAmount,
+                              breaks =  c(0, 2499, 4999, 7499, 9999, 12499,
+                                          14999, 17499, 19999, 22499, 24999,
+                                          27499, 29999, 32499, 34999,Inf),
+                              labels = c("$0-2499", "$2500-4999", "$5000-7499",
+                                         "$7500-9999", "$10000-12499",
+                                         "$12500-14999", "$15000-17499",
+                                         "$17500-19999", "$20000-22499",
+                                         "$22500-24999", "$25000-27499",
+                                         "$27500-29999", "$30000-32499",
+                                         "$32500-34999", "$35000+"),
+                              ordered_result = TRUE)
+
+```
+
+```{r IncomeRange Reordered, echo=FALSE, message=FALSE, warning=FALSE}
+#Reordering Income data
+working_data$IncomeRange <- factor(working_data$IncomeRange,
+                                   levels = c("Not displayed",
+                                              "Not employed", "$0",
+                                              "$1-24,999", "$25,000-49,999",
+                                              "$50,000-74,999","$75,000-99,999",
+                                              "$100,000+"))
+
+```
+
+```{r Loan Group Plot, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(aes(x = LoanGroup),
+        data = working_data) +
+   geom_histogram(stat = 'count', color = 'black') +
+   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))  +
+  theme(axis.text.y = element_text(size = 7))
+```
+
+```{r Loan Group, echo=FALSE, message=FALSE, warning=FALSE}
+
+table(working_data$LoanGroup)
+```
+
+With the most popular loan range being between 2500 and 4999, and  the majority
+of loans being less than 12,500, it appears that the primary loan market is
+personal loans with possibly a few major purchases.
+
+
+
+
+
+
+# Univariate Analysis
+
+
+
+#### What is the structure of your dataset?
+
+The original dataset contains 113,937 loan entries with 81 different variables.
+The dataset used for analysis contains 16 of those original variables with
+an additional 10 variables created to provide alternative insights into the 
+data.
+
+#### What is/are the main feature(s) of interest in your dataset?
+
+The motivation for this analysis is to discover who is the loan requestor,
+what is the purpose and amount of the loan, and what factors indicate a
+loan application will be approved.  Because Prosper uses a proprietary system
+to determine these factors the followng features are the core of the analysis:
+Occupation, Income, Credit Score and Employment Status.  These factors were 
+chosen because they are  more traditional factors used in loan applications.
+
+#### What other features in the dataset do you think will help support your 
+#### investigation into your feature(s) of interest?
+
+
+Other features that will assist in shaping the results of the analysis may be:
+Current Delinquencies, Debt to Income Ratio, Current Credit Lines, Estimated
+Return, Current Revolving Accounts, Public Records 12 months, Effective
+Estimated Yield and Estimated Loss.  Many of these features are used in
+determining traditional credit scores but they may give insight into the range
+of loans a requestor qualifies for and the amount of the approved loan.
+
+
+#### Did you create any new variables from existing variables in the dataset?
+#### Did you perform any operations on the data to tidy, adjust, or change the 
+#### form of the data? If so, why did you do this?
+
+
+There were a number of modifications made to the dataset, the first was to
+create the dataset that will be evaluated in the analysis. 
+
+
+The overall decision to create new variables instead of refactoring the 
+original ones was made to provide consistency and not lose any other potential
+insights that the original values may provide.
+
+
+The variable **OccupationGroup** was created to standardize the occupational 
+observations of the loan requestor.  This was broken down categorically 
+in accordance with ISCO standards.
+
+
+Both UpperCreditRange and LowerCreditRange were broken into categories 
+**Upper.Range** and **Lower.Range** to give a more concise view of their ranges.
+Then those values were combined into **CreditCombined** and 
+**CreditCombinedRange** which averages the upper and lower credit scores.  
+This was done because the difference between the upper and lower 
+scores was marginal. 
+
+**CategoryName** was created from ListingCategory as the values are numeric
+to see the distribution of loans by name.
+
+
+Finally, LoanOriginalAmount was categorized as **LoanGroup** to provide a 
+more consistent approach to observing loan values.  
+
+
+#### Of the features you investigated, were there any unusual distributions?
+
+UpperCreditRange and LowerCreditRange initially appear bimodal and when 
+scaled it was very revealing in that it clearly shows Prosper's preferred 
+market from a credit score perspective.
+
+LoanOriginalAmount has a multimodal distribution with peaks every 2500. While
+this may appear unusual it make sense that these amounts would be general
+cut off values given that Prosper Loans minumum and maximum values are 
+currently 2000 - 40000.
+
+#### Reflections
+
+
+With a cursory look at who Prosper is giving a loan, it appears that the
+majority of loan requestors are in one of these groups: Other, Professional, 
+Service or Trade.  They are employed and their income is more than $25,000
+with a credit score of at least 650.  The loan amount requested is less than
+$17,500 and is primarily in these catgories: Business, Debt Consolidation,
+Home Improvement, or Personal.  
+
+
+
+```{r Working Subset Credit, message=FALSE, warning=FALSE, include=FALSE}
+#takes the base data and applies the condition of credit score of at least 650.
+
+working_sub <- subset(working_data, CreditCombined >= 650, select= c("LoanGroup",
+                                                                     "CategoryNames",
+                                                                     "CurrentCreditLines", 
+                                                                     "CurrentDelinquencies",
+                                                                     "CreditCombined", "Combined.range",
+                                                                     "DebtToIncomeRatio", "EmploymentStatus",
+                                                                     "EmploymentStatusDuration",
+                                                                     "EmploymentStatusDuration_Years",
+                                                                     "EstimatedReturn", "IncomeRange",
+                                                                     "ListingCategory",
+                                                                     "LoanOriginalAmount",
+                                                                     "Occupation",
+                                                                     "OccupationGroup",
+                                                                     "OpenCreditLines",
+                                                                     "IsBorrowerHomeowner",
+                                                                     "HomeOwner",
+                                                                     "EstimatedLoss",
+                                                                     "LenderYield",
+                                                                     "EstimatedEffectiveYield"))
+
+
+```
+
+
+```{r IncomeRange Plot, message=FALSE, warning=FALSE, include=FALSE}
+#uses base dataset
+#plots to examine the relationship of Occupation, Loans, Income and Loan Category.
+inc_credit <- ggplot(aes(x= IncomeRange),
+       data = working_sub) +
+  geom_bar(stat = 'count') +
+  xlab('Income by Credit Score ') +
+ theme(axis.text.x = element_text(angle =90, hjust = 1, vjust = 0.5)) +
+  facet_wrap(~Combined.range, ncol = 1) +
+  scale_y_sqrt()
+  
+
+occ_credit <- ggplot(aes(x= OccupationGroup),
+       data = working_sub) +
+  geom_bar(stat = 'count') +
+  xlab('Occupation by Credit Score') +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  facet_wrap(~Combined.range, ncol = 1) +
+  scale_y_sqrt()
+
+
+loan_occ <- ggplot(aes(x = OccupationGroup),
+                   data = working_sub) +
+  geom_bar(stat = 'count') +
+  xlab('Loan Amount by Occupation') +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  facet_wrap(~LoanGroup, ncol = 3) +
+  scale_y_sqrt()
+
+loan_credit <- ggplot(aes(x = Combined.range),
+                   data = working_sub) +
+  geom_bar(stat = 'count') +
+  xlab('Loan Amount by Credit') +
+  facet_wrap(~LoanGroup, ncol = 4) +
+  scale_y_sqrt()
+
+loan_category <- ggplot(aes(x = LoanGroup),
+                   data = working_sub) +
+  geom_bar(stat = 'count') +
+  xlab('Loan Amount by Category') +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  facet_wrap(~CategoryNames, ncol = 3) +
+  scale_y_sqrt()
+
+occ_category <- ggplot(aes(x = OccupationGroup),
+                   data = working_sub) +
+  geom_bar(stat = 'count') +
+  xlab('Loan Category by Occupation') +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  facet_wrap(~CategoryNames, ncol = 3) +
+  scale_y_sqrt()
+
+```
+
+####Bivariant 
+
+#### Loan Requestor
+
+The there is a strong indication that minimum preferred credit score is
+650, so the dataset has been narrowed to meet this minimum.  This brings the
+total entries included from 113,937 to 86,608.
+
+
+```{r Sub Occ Credit, echo=FALSE, message=FALSE, warning=FALSE}
+occ_credit
+
+```
+
+Labor, Machinery and Military have the least number of loan requestors in the
+range of 650 and above while all other occupations are well represented.
+
+```{r Sub Income Credit, echo=FALSE, message=FALSE, warning=FALSE}
+inc_credit
+
+```
+
+No surprise here to see that the income range is predominately 25,000 and above.
+
+
+#### Loans, Requestor and Credit
+
+```{r Sub Loan Credit, echo=FALSE,  message=FALSE, warning=FALSE}
+
+loan_credit
+
+```
+
+If the credit score is below 700, it appeears that the maximum acceptable
+loan is less than 27,500.
+
+```{r Sub Category Credit, echo=FALSE, fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
+occ_category
+```
+
+The data bears out that the majority of loans are for debt consolidation, 
+instead of large purchases.
+
+```{r Occupation Category Plot, echo=FALSE, fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
+loan_occ
+
+```
+
+It seems that if your occupation is clerical, labor or machinery the likelyhood
+of requesting or receiving a loan greater than 27,000 is very unlikely.
+This is interesting because it may indicate that they are in the credit score
+range of less than 700.
+
+```{r Sub Loan Cat, echo=FALSE, fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
+loan_category
+
+```
+
+Here again,  no matter how much money is borrow it is predominately for 
+debt consolidation.  This is very unusual and would indicate a high level of
+risk for those investing in loans.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#uses base dataset
+ggplot(aes(x = OccupationGroup, y = CurrentDelinquencies),
+       data = working_sub) +
+  geom_boxplot() 
+```
+
+This is not what we expect to see when looking at delinquencies.  It is safe
+to say that there are quite a number of outliers. We 
+expect that the number of delinquencies be very low in order to qualify for
+a loan.  It is very surprising that there are values in the 50 range.  
+
+
+#### Other Determining Factors
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#uses base dataset
+ggplot(aes(x = CurrentDelinquencies, y = ..count../sum(..count..)),
+       data = subset(working_data, CreditCombined >= 650)) +
+geom_freqpoly(aes(color = OccupationGroup), binwidth = .75) +
+scale_x_continuous(limits = c(0, 5), breaks = seq(0, 5, .50)) +
+
+xlab('Number of Delinquencies') +
+ylab('Proportion of Delinquencies by Occupation')
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#uses base dataset
+working_data %>%
+  group_by(OccupationGroup) %>%
+  summarise(mean_delinquencies = mean(CurrentDelinquencies),
+            median = median(CurrentDelinquencies),
+            Count = n())
+
+
+```
+
+Proportionally we can see that the majority of those who were granted a loan
+had less than 1 delinquency on their current credit report.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#uses base dataset
+ggplot(aes(x = CurrentCreditLines),
+       data = working_data) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~OccupationGroup, ncol = 2)
+  
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#Uses base dataset
+working_data %>%
+  group_by(OccupationGroup) %>%
+  summarise(mean = mean(CurrentCreditLines),
+            median = median(CurrentCreditLines),
+            Count = n())
+
+```
+
+The number of credit lines is fairly consistent across all occupations.  It
+appears that the ideal number of credit lines is 10 or less.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#uses data with condition of credit score of at least 650.
+ggplot(aes(x = OccupationGroup, y = DebtToIncomeRatio),
+       data = working_sub) +
+  geom_boxplot()
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#uses data with condition of credit score of at least 650.
+working_sub %>%
+  group_by(OccupationGroup) %>%
+  summarise(mean_DTI = mean(DebtToIncomeRatio),
+            median_DTI = median(DebtToIncomeRatio),
+            Count = n())
+
+```
+
+While there are quite a few outliers here as well, the average Debt to Income
+Ratio by occupation is less than 30%.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#uses data with condition of credit score of at least 650.
+ggplot(aes(x = CreditCombined, y = DebtToIncomeRatio),
+       data = subset(working_sub, DebtToIncomeRatio <1)) +
+  geom_point(alpha = 0.025) +
+  geom_smooth()
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#uses data with condition of credit score of at least 650.
+working_sub %>%
+  group_by(Combined.range) %>%
+  summarise(mean_DTI = mean(DebtToIncomeRatio))
+
+```
+
+Also we speculate that the debt to income ratio should be no more than
+30 percent in order to qualify for a Prosper loan. Although it appears the
+preferred range is much lower at approximately 25%
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#uses data with condition of credit score of at least 650.
+ggplot(aes(y = IncomeRange, x = EstimatedReturn),
+       data = working_sub) +
+  geom_jitter(alpha = 0.025) +
+  scale_x_sqrt()
+
+```
+
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE}
+#looks at estimated return across occupation with condition of credit score of at least 650.
+with(working_sub, by(EstimatedReturn,  OccupationGroup, summary))
+```  
+
+Clerical, labor and trade are the highest return rate among the occupational
+groups indicating that they are considered more of a risk than other groups.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#Uses the condition of credit score of at least 650
+working_sub %>%
+  group_by(IncomeRange) %>%
+  summarise(meanR = mean(EstimatedReturn),
+            meanY = mean(EstimatedEffectiveYield))
+
+```
+
+While there is no direct relationship between Income and Estimated Return, the
+range of estimated return appears in a risk versus reward fashion.  Meaning, the
+lower the income the higher the estimated return.
+This is not particularly surprising because the data definition states that
+Estimated Return is in part based off of Estimated Effective Yield.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#takes the mean of Estimated Return, Estimated Effective Yield and Lender Yield of those with Credit Score of at least 650.
+working_sub %>%
+  group_by(OccupationGroup) %>%
+  summarise(meanR = mean(EstimatedReturn),
+            meanEEY = mean(EstimatedEffectiveYield),
+            meanLY = mean(LenderYield))
+
+```
+
+Again we see that clerical, labor and machinery have the highest estimated
+yield of all groups.  This is worth investigating further.
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#Dataset scoped to specific groups listed with condition of credit score of at least 650.
+sub_occ <- working_sub[working_sub$OccupationGroup %in% 
+                         c("Clerical", "Labor", "Trade"),]
+
+```
+
+```{r message=FALSE, warning=FALSE, , echo=FALSE, include=FALSE}
+#plots for investigating abnomalities over certain groups
+sub_occ_loan <- ggplot(aes(x = OccupationGroup, colour = Combined.range, 
+                           fill = Combined.range),
+       data = sub_occ) +
+  geom_histogram(stat = 'count') +
+  facet_wrap(~ LoanGroup) +
+  scale_y_sqrt() +
+  scale_color_brewer(palette = "Greens") +
+  scale_fill_brewer(palette = "Greens") +
+  ggtitle("Loan Amount by Credit Score") +
+  theme(plot.title = element_text(hjust = 0.5, lineheight =  .8,
+                                  face = 'bold')) +
+  theme(axis.title.x = element_blank()) +
+  ylab("Total Number of Loans")
+
+sub_occ_income <- ggplot(aes(x = OccupationGroup, colour = Combined.range, fill = Combined.range),
+       data = sub_occ) +
+  geom_histogram(stat = 'count') +
+  facet_wrap(~ IncomeRange) +
+  scale_y_sqrt() +
+  scale_color_brewer(palette = "Greens") +
+  scale_fill_brewer(palette = "Greens") +
+  ggtitle("Income by Occupation and Credit Score") +
+  theme(plot.title = element_text(hjust = 0.5, lineheight =  .8,
+                                  face = 'bold')) +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.title.y = element_blank()) 
+
+sub_occ_credit <- ggplot(aes(x = OccupationGroup, colour = Combined.range, fill = Combined.range),
+       data = sub_occ) +
+  geom_histogram(stat = 'count') +
+  facet_wrap(~ Combined.range) +
+  scale_color_brewer(palette = "Greens") +
+  scale_fill_brewer(palette = "Greens") +
+  ggtitle("Credit Score Totals by Occupation") +
+  theme(plot.title = element_text(hjust = 0.5, lineheight =  .8,
+                                  face = 'bold')) +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.title.y = element_blank()) 
+  
+
+```
+
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE}
+sub_occ_income
+
+```
+
+Income doesn't appear to be a factor in why these groups have lower loan
+amounts.
+
+```{r , echo=FALSE, message=FALSE, warning=FALSE}
+
+sub_occ_credit
+
+```
+
+This may be the answer!  I'm surprised that their credit scores are so low
+considering the income distribution is relative to other occupations.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+sub_occ_loan
+
+```
+
+While not completely definitive, it does indeed show that credit score is 
+a factor for these groups lower loan amounts.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#base data without conditions
+eyr <- ggplot(aes(x = EstimatedEffectiveYield, y = EstimatedReturn),
+       data =working_data) +
+  geom_point(position = 'jitter', alpha = 1/100) +
+  geom_smooth(method = 'lm') 
+eyl <- ggplot(aes(x = EstimatedEffectiveYield, y = EstimatedLoss),
+       data =working_data) +
+  geom_point(position = 'jitter', alpha = 1/100) +
+  geom_smooth(method = 'lm')
+erl <- ggplot(aes(x = EstimatedReturn, y = EstimatedLoss),
+       data =working_data) +
+  geom_point(position = 'jitter', alpha = 1/100) +
+  geom_smooth(method = 'lm')
+grid.arrange(eyr, eyl, erl, ncol = 1)
+
+```
+
+The relationship between estimated yield, loss and return is easy to see here.
+Prosper uses this to determine risk and reward for investors.
+
+
+
+
+# Bivariate Analysis
+
+
+
+#### How did the feature(s) of interest vary with other features?
+
+Occupation by EstimatedEffectiveYield varied significantly across three 
+specific groups: Clerical, Labor, and Trade.  These three groups had the 
+highest estimated yield and estimated return of all other occupations.
+They also had the lowest loan amounts.  When investigating further it was
+discovered they had proportionally lower credit scores and this was why those
+values were higher.
+
+
+#### Did you observe any interesting relationships between the other features?
+The relationship between EstimatedEffectiveYield, EstimatedLoss and 
+EstimatedReturn were interesting in how closely related they are.
+
+Due to the scope of interest the supporting variables relationship with the
+main features were of interest. The relationship between the combined credit
+score and debt to income ratio was interesting.  The higher the credit score
+the lower the DTI.  It's interesting because it was unexpected.  The expected
+relationship is Income to DTI.  It was also interesting to see that higher
+income and credit score were not related.  
+
+#### What was the strongest relationship you found?
+
+The strongest relationships were between EstimatedEffectiveYield, 
+EstimatedLoss and EstimatedReturn.  These values are used to determine how
+much money investors and Prosper will make over the life of the loan.
+
+The relationship between credit score and the amount of the loan was the
+strongest of the observations.    
+
+### Reflections
+The criteria for receiving a loan with Prosper is now much more defined. The
+Debt to Income Ratio(DTI) should be no greater than **.30**, Income should be at
+least **$25,000**, Credit Score should be at least **650**, the category for the loan
+should be Debt Consolidation and the amount of the loan should be less than
+**$17,500**.  We will try to narrow this down further and see if it holds true with
+multivariate plots.
+
+
+
+
+
+# Multivariate Plots Section
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+# base numeric data without conditions
+working_sub_corr <- subset(working_sub, select = c("CurrentCreditLines", 
+                                             "CurrentDelinquencies",
+                                             "CreditCombined", 
+                                             "DebtToIncomeRatio","EstimatedReturn", 
+                                             "LoanOriginalAmount",
+                                             "EstimatedLoss",
+                                             "LenderYield",
+                                             "EstimatedEffectiveYield"))
+
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#creates dataset with preferred conditions.
+
+working_sub_cond <- subset(working_data,( CreditCombined >= 650) & 
+                             (IncomeRange != "Not displayed") & 
+                             (IncomeRange != "Not employed") &
+                             (IncomeRange != "$0") &
+                             (IncomeRange !="$1-24,999") &
+                             (DebtToIncomeRatio <= 1) &
+                             ((LoanGroup == "$0-2499") |
+                                (LoanGroup == "$2500-4999") |
+                                (LoanGroup == "$5000-7499") |
+                                (LoanGroup == "$7500-9999") |
+                                (LoanGroup == "$10000-12499") |
+                                (LoanGroup == "$12500-14999") |
+                                (LoanGroup == " $15000-17499")),
+                               
+                           select= c("CurrentCreditLines", 
+                                     "CurrentDelinquencies",
+                                     "CreditCombined", 
+                                     "DebtToIncomeRatio","EstimatedReturn", 
+                                     "LoanOriginalAmount",
+                                     "EstimatedLoss",
+                                     "LenderYield",
+                                     "EstimatedEffectiveYield"))
+
+```
+
+```{r Corr Plot Standard, echo=FALSE, fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
+#uses numeric data without conditions
+cor.plot(working_sub_corr, numbers = TRUE, show.legend = FALSE, cex = TRUE, 
+         main = "Correlation of Standard Loan Factors",
+         xlas = 3, ylas =1, MAR = 7)
+
+```
+
+There are no surprising relationships here. Yield, Loss and Return are all 
+directly related.  This is used to determine APR, Rate and profit for 
+investors. The strong and moderate negative relationships between
+CreditCombined, Yield and Loss are significant. 
+
+```{r Corrplot with Cond,echo=FALSE, fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
+#Used conditional criteria with numeric data
+cor.plot(working_sub_cond, numbers = TRUE, show.legend = FALSE,
+         main = "Correlation with a Credit Score >= 650 
+         Loan < 17,500, DTI <= 1", 
+         xlas = 3, ylas =1, MAR = 7) 
+```
+
+There are subtle differences between both of these plots. 
+There is a difference of 0.01 - 0.27 between the plot without conditions 
+and the plot that has conditions set at a credit score of at least 650, 
+a loan amount less than **$17,500** and where the DTI is less than or equal to **1**. 
+
+That change in significance is very predictable because the largest variance in
+significance is between CurrentCreditLines and DebtToIncomeRatio.  These two
+variables have a very limited scope of significance in that as
+CurrentCreditLines rises the significance of DTI falls.  DTI shows the most
+significance when it is 1 or lower.  It will show less significance as the 
+value falls and equally so at a the value greater than 1.  Putting it simply,
+the more Lines of credit you have the more debt you obtain.  When you reach a
+debt of greater than your income the number no longer has significant value in
+regard to the number of credit lines.
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(aes(x = CreditCombined, y = IncomeRange, colour = IsBorrowerHomeowner),
+       data = subset(working_sub, (IncomeRange !="Not displayed") & 
+                       (IncomeRange != "Not employed") & 
+                       (IncomeRange != "$0"))) +
+
+  geom_jitter() +
+  ggtitle("Home Ownership by Credit and Income") +
+  theme(plot.title = element_text(hjust = 0.5, lineheight =  .8,
+                                  face = 'bold')) +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.title.y = element_blank()) +
+  guides(color = guide_legend(title = "Home Owner"))
+  
+
+```
+
+Loan requestors with a higher income tend to own homes and have higher credit
+score than those with lower incomes and credit scores.  
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(aes(x = CreditCombined, y = LoanOriginalAmount, colour = IsBorrowerHomeowner),
+       data = working_sub) +
+  # scale_y_discrete() +
+  scale_x_continuous() +
+  geom_jitter() +
+  geom_smooth(method = 'lm', color = 'blue') +
+  ggtitle("Home Ownership by Credit and Loan Amount") +
+  theme(plot.title = element_text(hjust = 0.5, lineheight =  .8,
+                                  face = 'bold')) +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.title.y = element_blank()) +
+  guides(color = guide_legend(title = "Home Owner"))
+  
+
+```
+
+A common theme as shown above, is the relationship between loan amount 
+and credit score.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#Conditional data used in the below plots.
+       sv <- subset(working_data, (CreditScoreRangeUpper >= 650) & 
+                       (DebtToIncomeRatio < 0.30) &
+                       (IncomeRange != "Not displayed") & 
+                       (IncomeRange != "Not employed") &
+                       (IncomeRange != "$0") &
+                       (IncomeRange !="$1-24,999") &
+                       ((LoanGroup == "$0-2499") |
+                          (LoanGroup == "$2500-4999") |
+                          (LoanGroup == "$5000-7499") |
+                          (LoanGroup == "$7500-9999") |
+                          (LoanGroup == "$10000-12499") |
+                          (LoanGroup == "$12500-14999")) &
+                     ((CategoryNames != "Not Available") &
+                         (CategoryNames!= "Other")))
+
+  
+```
+
+```{r echo=FALSE,  message=FALSE, warning=FALSE}
+#Uses conditional data 
+ggplot(aes(x = CategoryNames, y = CreditScoreRangeUpper, colour =LoanGroup),
+       data = sv) +
+  geom_point(position = 'jitter', shape = 1) +
+  coord_flip() +
+  ggtitle("Loans Distribution by Category and Amount") +
+  theme(plot.title = element_text(hjust = 0.5, lineheight =  .8,
+                                  face = 'bold')) +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.title.y = element_blank()) 
+  
+
+```
+
+Because of the non-linear relationship between our loan requestor and 
+Prosper loan approval criteria we take an approach of narrowing the scope 
+according to what we have learned about the requestor. 
+Here we see the dispersion of loan for those whose credit score is greater 
+than **650**, debt to income ratio is less than **.30**, income
+is greater than **$25,000** and loan request is less than **$15,000**.  
+Across distinctlyvdefined loan categories we see that the primary 
+loan requests are for Business, Debt Consolidation, or Home Improvement.
+
+
+```{r echo=FALSE, fig.height=7, fig.width=8, message=FALSE, warning=FALSE}
+#Plot density of Loan Groups from base data and conditional data.
+
+svc <- ggplot(aes(x = LoanGroup,  fill = LoanGroup, color = LoanGroup),
+       data = sv) +
+  geom_density(position = "identity") +
+  xlab("Loans with Criteria Conditions") +
+  theme(plot.title = element_text(hjust = 0.5, lineheight =  .8,
+                                  face = 'bold')) 
+
+wsc <- ggplot(aes(x = LoanGroup,  fill = LoanGroup, color = LoanGroup),
+       data = working_sub) +
+  geom_density(position = "identity") +
+  xlab("Loans without Criteria Conditions") +
+  theme(plot.title = element_text(hjust = 0.5, lineheight =  .8,
+                                  face = 'bold'), axis.text.x = 
+          element_text(angle = 45, hjust = 1))
+
+grid.arrange(svc, wsc)
+```
+
+The criteria set to restrict the loan amount to less than **$15,000** is very 
+solid here. We see that once the loan amount reaches **$17,500** the plot starts 
+to flatten out rapidly.  
+
+
+# Multivariate Analysis
+
+
+
+#### Talk about some of the relationships you observed in this part of the \
+investigation. Were there features that strengthened each other in terms of \
+looking at your feature(s) of interest?
+
+When the data was restricted to conditions proposed to be successful in
+applying for a loan with Prosper the results of the shift across all 
+observations becomes much clearer.  Furthermore, when we restrict the 
+conditions closer to what is ideal, it is then that we can see a much more
+significant change in the data.
+
+#### Were there any interesting or surprising interactions between features?
+
+The relationship between DTI and Current credit lines was really interesting.
+When setting a conditional scope to observe correlation changes at first 
+I was surprised to see such a dramatic change.  I hadn't truly considered the
+impact on the relationship between the two variables.  
+
+------
+
+
+
+
+
+
+
+
+
+# Final Plots and Summary
+
+
+### Plot One
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#takes modified data and plots density of loan distribution by Occupation and Amount.
+ggplot(aes(x = LoanGroup, y = ..count.., fill = OccupationGroup, color = OccupationGroup),
+       data = sv) +
+  geom_density(position = "fill") +
+  scale_fill_brewer(palette = "Spectral") +
+  scale_color_brewer(palette = "Spectral") +
+  ggtitle("Distribution of Loans by Occupation and Amount") +
+  theme(plot.title = element_text(hjust = 0.5, lineheight =  .8,
+                                  face = 'bold')) +
+  theme(panel.grid = element_blank(), panel.border = element_blank(),
+        panel.background = element_blank(), 
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) + 
+       
+  xlab("Loans less than $15,000") +
+  ylab("Density")
+
+```
+
+### Description One
+
+I chose this plot because it answers the questions of who(loan requestor) and
+what(loan amount).  It is very easy to see the relationship between
+occupations and loan amounts.  All occupations are clearly represented which
+agrees with the assertion that occupation is not a factor in qualifying for a
+loan with Prosper. The division of volume by loan amount is clear as well.  We
+can see as the loan amount increases the density drops off rapidly which agrees
+with the assertion that to be successful as a loan requestor the loan should be
+less than $15,000.
+
+
+### Plot Two
+
+```{r Final Loan Amount by Category, echo=FALSE, fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
+ggplot(sv, aes(factor(CategoryNames), fill = LoanGroup)) +
+  geom_bar(width = 1.75) +
+  coord_polar("x") +
+  ggtitle("Loan Amount by Category") +
+  theme(plot.title = element_text(hjust = 0.5, lineheight =  .8,
+                                  face = 'bold')) +
+  theme(axis.ticks.y = element_blank(), axis.text.y = element_blank(),
+        axis.text.x = element_text(size = 8, angle = 45)) +
+  ylab("Number of Loans") +
+  xlab("Loan Categories")
+
+
+```
+
+### Description Two
+
+This plot was chosen to answer the questions of what(loan amount), and
+why(loan category). We know the answer to the who of Prosper loans this plot
+shows that we will be more successful in the loan application process if the
+loan is for debt consolidation.  However, if the loan is for home improvement or
+business and the amount requested is less than $7,500 we will be much more 
+likely to be approved than for other loan categories.
+
+
+### Plot Three
+
+```{r Final Occupation Credit, echo=FALSE, fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
+
+ggplot(aes(x =LoanGroup, y =  CreditCombined, fill = Combined.range),
+       data = sv) +
+  geom_boxplot() +
+  coord_flip() +
+  facet_wrap(~OccupationGroup) +
+  ggtitle("Loans by Amount, Occupation and Credit Score") +
+  xlab("Loan Amount") +
+  ylab("Credit Score") +
+  guides(fill = guide_legend(title = " Credit Score Range")) +
+  theme(axis.text.x = element_text(angle = 90), plot.title =
+          element_text(hjust = 0.5, lineheight =  .8,
+                                  face = 'bold'))
+
+```
+
+### Description Three
+
+
+The final plot was chosen because it shows the how(criteria) of the Prosper
+loan requestor. A credit score of at least **650** and loan amounts lower than
+**$15,000**,  DTI of less than **.30** and an income of at least **$25,000**
+are  all represented here.  While some occupations like Labor may have a harder
+time of qualifying for higher loan amounts with lower credit scores we can see
+that all the higher the credit score the more successful the request is across
+all occupations.
+
+
+------
+
+#### Reflection
+
+The goal of this study was to answer the questions of who, what, why and how
+Prosper grants loans.  The dataset used holds 113,937 entries across 81
+variables.  The total number of variables used across this study both
+original and created totaled 26.  
+
+The choice of those specific variables was made to give the most meaning 
+to the data by using a more traditional approach to the criteria of the 
+loan process.  
+  
+From there each was evaluated parallel to the goals of the study.  
+I was able to determine that while certain occupations have a higher 
+volume of loans, all occupations were represented  if they were within the
+parameters that were defined as preferred.  
+
+**The final preferred criteria is:**
+
+- All Occupations
+- Credit Score >= 650
+- Current Delinquencies < 1
+- Debt to Income Ratio < .30
+- Income > $25,000
+- Loan Amount < $15,000
+- Loan Category of Debt Consolidation, Business or Home Improvement
+
+There are so many more insights to be gained from this data set and I have just
+scratched the surface.  Other things to explore could be how Prosper defines
+a good risk or how many of Propser's customers are repeat customers.  It would
+also be interesting to take this data and develop a model to help investors
+determine the best loans to back and what loans to avoid.  
+ 
+
+
+
+#### Sources
+
+
+- https://en.wikipedia.org/wiki/International_Standard_Classification_of_Occupations
+
+- https://www.prosper.com/plp/loans/loan-types/
+
+- http://r.789695.n4.nabble.com/Apostrophes-in-R-Commander-in-recode-td3704453.html
+
+- https://www.stat.berkeley.edu/classes/s133/factors.html
+
+- https://www.cnbc.com/quotes/?symbol=.SPX
