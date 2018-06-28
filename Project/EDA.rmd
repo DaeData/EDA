@@ -142,7 +142,8 @@ working_data$HomeOwner <- ifelse(working_data$IsBorrowerHomeowner ==
 ```
 
 ```{r Occupation Group, message=FALSE, warning=FALSE, include=FALSE}
-#Refactors Occupation into Categories as defined by ISCO to better organize and visualize.
+#Refactors Occupation into Categories as defined by ISCO to better organize 
+#and visualize.
 working_data$OccupationGroup <- recode(working_data$Occupation,
 "c('Food Service Management', 'Retail Management', 'Executive') = 'Management';
 c('Analyst', 'Investor', 'Medical Technician','Nurse (LPN)',
@@ -224,19 +225,35 @@ working_data$Combined.range <- cut(working_data$CreditCombined,
                                 include.lowest = TRUE)
 
 ```
+```{r message=FALSE, warning=FALSE, include=FALSE}
+#formatting for plots
+
+four_five  <- theme(plot.title = element_text(hjust = 0.5, lineheight =  .8,
+                                  face = 'bold'), axis.text.x = 
+          element_text(angle = 45, hjust = 1))
+
+ttl <-   theme(plot.title = element_text(hjust = 0.5, lineheight =  .8,
+                                  face = 'bold'))
+ninety <- theme(axis.text.x = element_text(angle = 90, size = 7, 
+                                   hjust = 1, vjust = 0))
+seven <- theme(axis.text.y = element_text(size = 7))
+
+ninety_seven <- theme(axis.text.x = element_text(angle = 90, size = 7, 
+                                   hjust = 1, vjust = 0)) +
+  theme(axis.text.y = element_text(size = 7))
+
+four_seven <- theme(axis.text.x = element_text(angle = 45, 
+                                               hjust = 1, size = 8))  +
+  theme(axis.text.y = element_text(size = 7))
+
+no_x_y <- theme(axis.title.x = element_blank()) +
+  theme(axis.title.y = element_blank()) 
+
+```
 
 
 ##Occupation
 
-
-```{r Occupation Plot, echo=FALSE, message=FALSE, warning=FALSE}
-ggplot(aes(x = Occupation),
-       data = loan) +
-  geom_point(stat = 'count') +
-  
-  theme(axis.text.x = element_text(angle = 90, size = 7, hjust = 1, vjust = 0)) +
-  theme(axis.text.y = element_text(size = 7))
-```
 
 
 First we will take a look at the occupation of those who were given loans
@@ -251,9 +268,7 @@ insights of the Occupations likely to receive a loan from Prosper.
 ggplot(aes(x = OccupationGroup),
        data = working_data) +
   geom_histogram(stat = 'count') +
-  
-  theme(axis.text.x = element_text(angle = 90, size = 7, hjust = 1, vjust = 0)) +
-  theme(axis.text.y = element_text(size = 7))
+  ninety_seven
 
 ```
 
@@ -269,7 +284,7 @@ ggplot(aes(x = OccupationGroup),
        data = working_data) +
   geom_histogram(stat = 'count') +
   facet_wrap(~ EmploymentStatus) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+  ninety
   
 ```
 
@@ -320,7 +335,7 @@ spending 11 years in their job.
 ggplot(aes(x = IncomeRange),
        data = working_data) +
   geom_histogram(stat = 'count') +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+  four_five
 
 ```
 
@@ -340,8 +355,7 @@ ggplot(aes(x = OccupationGroup),
        data = working_data) +
   geom_histogram(stat = 'count') +
   facet_wrap(~ IncomeRange) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
-
+  ninety
 ```
 
 
@@ -358,7 +372,7 @@ CreditScoreRangeLower are used.
 upper <- ggplot(aes(x = CreditScoreRangeUpper),
        data = working_data) +
   geom_histogram(color = 'black') +
-  theme(axis.text.y = element_text(size = 7))
+  seven
 
 upper2 <- upper + scale_x_sqrt(limits = c(450, 900),
                                 breaks = seq(450, 900, 50)) +
@@ -367,7 +381,7 @@ upper2 <- upper + scale_x_sqrt(limits = c(450, 900),
 lower <- ggplot(aes(x = CreditScoreRangeLower),
        data = working_data) +
   geom_histogram( color = 'black')  +
-  theme(axis.text.y = element_text(size = 7)) 
+  seven
 
 lower2 <- lower + scale_x_sqrt(limits = c(450, 900),
                                 breaks = seq(450, 900, 50)) +
@@ -451,7 +465,7 @@ the initial request and second request were within a short time period.
 credcombo <- ggplot(aes(x = CreditCombined),
        data =  working_data) +
     geom_histogram(color = 'black')  +
-  theme(axis.text.y = element_text(size = 7))
+    seven
 
 credcombo2 <- credcombo +
   scale_x_sqrt(limits = c(500, 900), breaks = seq(500, 900, 50))
@@ -492,7 +506,7 @@ ggplot(aes(x = OccupationGroup),
        data = working_data) +
   geom_histogram(stat = 'count') +
   facet_wrap(~ Combined.range) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = .5)) 
+  ninety 
   
 
 ```
@@ -570,8 +584,7 @@ working_data$IncomeRange <- factor(working_data$IncomeRange,
 ggplot(aes(x = LoanGroup),
         data = working_data) +
    geom_histogram(stat = 'count', color = 'black') +
-   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))  +
-  theme(axis.text.y = element_text(size = 7))
+   four_seven
 ```
 
 ```{r Loan Group, echo=FALSE, message=FALSE, warning=FALSE}
@@ -680,25 +693,27 @@ Home Improvement, or Personal.
 ```{r Working Subset Credit, message=FALSE, warning=FALSE, include=FALSE}
 #takes the base data and applies the condition of credit score of at least 650.
 
-working_sub <- subset(working_data, CreditCombined >= 650, select= c("LoanGroup",
-                                                                     "CategoryNames",
-                                                                     "CurrentCreditLines", 
-                                                                     "CurrentDelinquencies",
-                                                                     "CreditCombined", "Combined.range",
-                                                                     "DebtToIncomeRatio", "EmploymentStatus",
-                                                                     "EmploymentStatusDuration",
-                                                                     "EmploymentStatusDuration_Years",
-                                                                     "EstimatedReturn", "IncomeRange",
-                                                                     "ListingCategory",
-                                                                     "LoanOriginalAmount",
-                                                                     "Occupation",
-                                                                     "OccupationGroup",
-                                                                     "OpenCreditLines",
-                                                                     "IsBorrowerHomeowner",
-                                                                     "HomeOwner",
-                                                                     "EstimatedLoss",
-                                                                     "LenderYield",
-                                                                     "EstimatedEffectiveYield"))
+working_sub <- subset(working_data, 
+                      CreditCombined >= 650, 
+                      select= c("LoanGroup",
+                                "CategoryNames",
+                                "CurrentCreditLines", 
+                                "CurrentDelinquencies",
+                                "CreditCombined", "Combined.range",
+                                "DebtToIncomeRatio", "EmploymentStatus",
+                                "EmploymentStatusDuration",
+                                "EmploymentStatusDuration_Years",
+                                "EstimatedReturn", "IncomeRange",
+                                "ListingCategory",
+                                "LoanOriginalAmount",
+                                "Occupation",
+                                "OccupationGroup",
+                                "OpenCreditLines",
+                                "IsBorrowerHomeowner",
+                                "HomeOwner",
+                                "EstimatedLoss",
+                                "LenderYield",
+                                "EstimatedEffectiveYield"))
 
 
 ```
@@ -711,7 +726,7 @@ inc_credit <- ggplot(aes(x= IncomeRange),
        data = working_sub) +
   geom_bar(stat = 'count') +
   xlab('Income by Credit Score ') +
- theme(axis.text.x = element_text(angle =90, hjust = 1, vjust = 0.5)) +
+  ninety +
   facet_wrap(~Combined.range, ncol = 1) +
   scale_y_sqrt()
   
@@ -720,7 +735,7 @@ occ_credit <- ggplot(aes(x= OccupationGroup),
        data = working_sub) +
   geom_bar(stat = 'count') +
   xlab('Occupation by Credit Score') +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  ninety +
   facet_wrap(~Combined.range, ncol = 1) +
   scale_y_sqrt()
 
@@ -729,7 +744,7 @@ loan_occ <- ggplot(aes(x = OccupationGroup),
                    data = working_sub) +
   geom_bar(stat = 'count') +
   xlab('Loan Amount by Occupation') +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  ninety +
   facet_wrap(~LoanGroup, ncol = 3) +
   scale_y_sqrt()
 
@@ -744,7 +759,7 @@ loan_category <- ggplot(aes(x = LoanGroup),
                    data = working_sub) +
   geom_bar(stat = 'count') +
   xlab('Loan Amount by Category') +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  ninety +
   facet_wrap(~CategoryNames, ncol = 3) +
   scale_y_sqrt()
 
@@ -752,7 +767,7 @@ occ_category <- ggplot(aes(x = OccupationGroup),
                    data = working_sub) +
   geom_bar(stat = 'count') +
   xlab('Loan Category by Occupation') +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  ninety +
   facet_wrap(~CategoryNames, ncol = 3) +
   scale_y_sqrt()
 
@@ -796,6 +811,7 @@ loan is less than 27,500.
 
 ```{r Sub Category Credit, echo=FALSE, fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
 occ_category
+
 ```
 
 The data bears out that the majority of loans are for debt consolidation, 
@@ -820,54 +836,24 @@ Here again,  no matter how much money is borrow it is predominately for
 debt consolidation.  This is very unusual and would indicate a high level of
 risk for those investing in loans.
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
-#uses base dataset
-ggplot(aes(x = OccupationGroup, y = CurrentDelinquencies),
-       data = working_sub) +
-  geom_boxplot() 
-```
 
-This is not what we expect to see when looking at delinquencies.  It is safe
-to say that there are quite a number of outliers. We 
-expect that the number of delinquencies be very low in order to qualify for
-a loan.  It is very surprising that there are values in the 50 range.  
+
+ 
 
 
 #### Other Determining Factors
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-#uses base dataset
-ggplot(aes(x = CurrentDelinquencies, y = ..count../sum(..count..)),
-       data = subset(working_data, CreditCombined >= 650)) +
-geom_freqpoly(aes(color = OccupationGroup), binwidth = .75) +
-scale_x_continuous(limits = c(0, 5), breaks = seq(0, 5, .50)) +
-
-xlab('Number of Delinquencies') +
-ylab('Proportion of Delinquencies by Occupation')
-
-```
-
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-#uses base dataset
-working_data %>%
-  group_by(OccupationGroup) %>%
-  summarise(mean_delinquencies = mean(CurrentDelinquencies),
-            median = median(CurrentDelinquencies),
-            Count = n())
 
 
-```
-
-Proportionally we can see that the majority of those who were granted a loan
-had less than 1 delinquency on their current credit report.
 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 #uses base dataset
-ggplot(aes(x = CurrentCreditLines),
+ggplot(aes(x = OccupationGroup, y = CurrentCreditLines),
        data = working_data) +
-  geom_density(alpha = 0.5) +
-  facet_wrap(~OccupationGroup, ncol = 2)
+  geom_boxplot(alpha = 0.5) +
+  scale_y_continuous(limits = c(0, 20), breaks = seq(0, 20, 5))
+  #facet_wrap(~OccupationGroup, ncol = 2)
   
 ```
 
@@ -889,7 +875,9 @@ appears that the ideal number of credit lines is 10 or less.
 #uses data with condition of credit score of at least 650.
 ggplot(aes(x = OccupationGroup, y = DebtToIncomeRatio),
        data = working_sub) +
-  geom_boxplot()
+  geom_boxplot() +
+  scale_y_continuous(limits = c(0, 
+                                quantile(working_sub$DebtToIncomeRatio, 0.95)))
 
 ```
 
@@ -910,7 +898,7 @@ Ratio by occupation is less than 30%.
 #uses data with condition of credit score of at least 650.
 ggplot(aes(x = CreditCombined, y = DebtToIncomeRatio),
        data = subset(working_sub, DebtToIncomeRatio <1)) +
-  geom_point(alpha = 0.025) +
+  geom_point(position = 'jitter', alpha = 0.025) +
   geom_smooth()
 
 ```
@@ -939,7 +927,8 @@ ggplot(aes(y = IncomeRange, x = EstimatedReturn),
 
 
 ```{r , echo=FALSE, message=FALSE, warning=FALSE}
-#looks at estimated return across occupation with condition of credit score of at least 650.
+#looks at estimated return across occupation with condition of credit 
+#score of at least 650.
 with(working_sub, by(EstimatedReturn,  OccupationGroup, summary))
 ```  
 
@@ -963,7 +952,8 @@ Estimated Return is in part based off of Estimated Effective Yield.
 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-#takes the mean of Estimated Return, Estimated Effective Yield and Lender Yield of those with Credit Score of at least 650.
+#takes the mean of Estimated Return, Estimated Effective Yield and 
+#Lender Yield of those with Credit Score of at least 650.
 working_sub %>%
   group_by(OccupationGroup) %>%
   summarise(meanR = mean(EstimatedReturn),
@@ -977,7 +967,8 @@ yield of all groups.  This is worth investigating further.
 
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
-#Dataset scoped to specific groups listed with condition of credit score of at least 650.
+#Dataset scoped to specific groups listed with condition of 
+#credit score of at least 650.
 sub_occ <- working_sub[working_sub$OccupationGroup %in% 
                          c("Clerical", "Labor", "Trade"),]
 
@@ -994,12 +985,12 @@ sub_occ_loan <- ggplot(aes(x = OccupationGroup, colour = Combined.range,
   scale_color_brewer(palette = "Greens") +
   scale_fill_brewer(palette = "Greens") +
   ggtitle("Loan Amount by Credit Score") +
-  theme(plot.title = element_text(hjust = 0.5, lineheight =  .8,
-                                  face = 'bold')) +
+  ttl +
   theme(axis.title.x = element_blank()) +
   ylab("Total Number of Loans")
 
-sub_occ_income <- ggplot(aes(x = OccupationGroup, colour = Combined.range, fill = Combined.range),
+sub_occ_income <- ggplot(aes(x = OccupationGroup, 
+                             colour = Combined.range, fill = Combined.range),
        data = sub_occ) +
   geom_histogram(stat = 'count') +
   facet_wrap(~ IncomeRange) +
@@ -1007,22 +998,19 @@ sub_occ_income <- ggplot(aes(x = OccupationGroup, colour = Combined.range, fill 
   scale_color_brewer(palette = "Greens") +
   scale_fill_brewer(palette = "Greens") +
   ggtitle("Income by Occupation and Credit Score") +
-  theme(plot.title = element_text(hjust = 0.5, lineheight =  .8,
-                                  face = 'bold')) +
-  theme(axis.title.x = element_blank()) +
-  theme(axis.title.y = element_blank()) 
+  ttl +
+  no_x_y
 
-sub_occ_credit <- ggplot(aes(x = OccupationGroup, colour = Combined.range, fill = Combined.range),
+sub_occ_credit <- ggplot(aes(x = OccupationGroup, 
+                             colour = Combined.range, fill = Combined.range),
        data = sub_occ) +
   geom_histogram(stat = 'count') +
   facet_wrap(~ Combined.range) +
   scale_color_brewer(palette = "Greens") +
   scale_fill_brewer(palette = "Greens") +
   ggtitle("Credit Score Totals by Occupation") +
-  theme(plot.title = element_text(hjust = 0.5, lineheight =  .8,
-                                  face = 'bold')) +
-  theme(axis.title.x = element_blank()) +
-  theme(axis.title.y = element_blank()) 
+  ttl +
+  no_x_y 
   
 
 ```
@@ -1113,11 +1101,12 @@ strongest of the observations.
 
 ### Reflections
 The criteria for receiving a loan with Prosper is now much more defined. The
-Debt to Income Ratio(DTI) should be no greater than **.30**, Income should be at
-least **$25,000**, Credit Score should be at least **650**, the category for the loan
+Debt to Income Ratio(DTI) should be no greater than **.30**, 
+Income should be at least **$25,000**, 
+Credit Score should be at least **650**, the category for the loan
 should be Debt Consolidation and the amount of the loan should be less than
-**$17,500**.  We will try to narrow this down further and see if it holds true with
-multivariate plots.
+**$17,500**.  We will try to narrow this down further 
+and see if it holds true with multivariate plots.
 
 
 
@@ -1126,16 +1115,19 @@ multivariate plots.
 # Multivariate Plots Section
 
 
+
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 # base numeric data without conditions
-working_sub_corr <- subset(working_sub, select = c("CurrentCreditLines", 
-                                             "CurrentDelinquencies",
-                                             "CreditCombined", 
-                                             "DebtToIncomeRatio","EstimatedReturn", 
-                                             "LoanOriginalAmount",
-                                             "EstimatedLoss",
-                                             "LenderYield",
-                                             "EstimatedEffectiveYield"))
+working_sub_corr <- subset(working_sub,
+                           select = c("CurrentCreditLines",
+                                      "CurrentDelinquencies",
+                                      "CreditCombined",
+                                      "DebtToIncomeRatio",
+                                      "EstimatedReturn",
+                                      "LoanOriginalAmount",
+                                      "EstimatedLoss",
+                                      "LenderYield",
+                                      "EstimatedEffectiveYield"))
 
 ```
 
@@ -1191,7 +1183,8 @@ cor.plot(working_sub_cond, numbers = TRUE, show.legend = FALSE,
 There are subtle differences between both of these plots. 
 There is a difference of 0.01 - 0.27 between the plot without conditions 
 and the plot that has conditions set at a credit score of at least 650, 
-a loan amount less than **$17,500** and where the DTI is less than or equal to **1**. 
+a loan amount less than **$17,500** and where the DTI is 
+less than or equal to **1**. 
 
 That change in significance is very predictable because the largest variance in
 significance is between CurrentCreditLines and DebtToIncomeRatio.  These two
@@ -1205,48 +1198,29 @@ regard to the number of credit lines.
 
 
 
-```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
-ggplot(aes(x = CreditCombined, y = IncomeRange, colour = IsBorrowerHomeowner),
-       data = subset(working_sub, (IncomeRange !="Not displayed") & 
-                       (IncomeRange != "Not employed") & 
-                       (IncomeRange != "$0"))) +
-
-  geom_jitter() +
-  ggtitle("Home Ownership by Credit and Income") +
-  theme(plot.title = element_text(hjust = 0.5, lineheight =  .8,
-                                  face = 'bold')) +
-  theme(axis.title.x = element_blank()) +
-  theme(axis.title.y = element_blank()) +
-  guides(color = guide_legend(title = "Home Owner"))
-  
-
-```
-
-Loan requestors with a higher income tend to own homes and have higher credit
-score than those with lower incomes and credit scores.  
-
-
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
-ggplot(aes(x = CreditCombined, y = LoanOriginalAmount, colour = IsBorrowerHomeowner),
-       data = working_sub) +
-  # scale_y_discrete() +
-  scale_x_continuous() +
-  geom_jitter() +
-  geom_smooth(method = 'lm', color = 'blue') +
+ggplot(working_sub, aes(CreditCombined, LoanOriginalAmount,
+                        color = IsBorrowerHomeowner =="True",
+                        color = IsBorrowerHomeowner == "False")) +
+  stat_ellipse() +
+  geom_smooth(method = "lm") +
   ggtitle("Home Ownership by Credit and Loan Amount") +
-  theme(plot.title = element_text(hjust = 0.5, lineheight =  .8,
-                                  face = 'bold')) +
-  theme(axis.title.x = element_blank()) +
-  theme(axis.title.y = element_blank()) +
+  ttl +
+  xlab("Credit Score") +
+  ylab("Loan Amount") +
   guides(color = guide_legend(title = "Home Owner"))
+
+ 
+ 
   
 
 ```
 
-A common theme as shown above, is the relationship between loan amount 
-and credit score.
+The relationship between home ownership and loan amount seems to be based
+on credit score.  The higher the credit score the more likely the requestor
+is a home owner and has received a higher loan amount.
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 #Conditional data used in the below plots.
@@ -1275,10 +1249,8 @@ ggplot(aes(x = CategoryNames, y = CreditScoreRangeUpper, colour =LoanGroup),
   geom_point(position = 'jitter', shape = 1) +
   coord_flip() +
   ggtitle("Loans Distribution by Category and Amount") +
-  theme(plot.title = element_text(hjust = 0.5, lineheight =  .8,
-                                  face = 'bold')) +
-  theme(axis.title.x = element_blank()) +
-  theme(axis.title.y = element_blank()) 
+  ttl +
+  no_x_y
   
 
 ```
@@ -1299,17 +1271,15 @@ loan requests are for Business, Debt Consolidation, or Home Improvement.
 svc <- ggplot(aes(x = LoanGroup,  fill = LoanGroup, color = LoanGroup),
        data = sv) +
   geom_density(position = "identity") +
+  ggtitle("Loan Distribution Comparison") +
   xlab("Loans with Criteria Conditions") +
-  theme(plot.title = element_text(hjust = 0.5, lineheight =  .8,
-                                  face = 'bold')) 
-
+  ttl
 wsc <- ggplot(aes(x = LoanGroup,  fill = LoanGroup, color = LoanGroup),
        data = working_sub) +
   geom_density(position = "identity") +
   xlab("Loans without Criteria Conditions") +
-  theme(plot.title = element_text(hjust = 0.5, lineheight =  .8,
-                                  face = 'bold'), axis.text.x = 
-          element_text(angle = 45, hjust = 1))
+  four_five
+ 
 
 grid.arrange(svc, wsc)
 ```
@@ -1355,24 +1325,20 @@ impact on the relationship between the two variables.
 
 ### Plot One
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-#takes modified data and plots density of loan distribution by Occupation and Amount.
-ggplot(aes(x = LoanGroup, y = ..count.., fill = OccupationGroup, color = OccupationGroup),
-       data = sv) +
-  geom_density(position = "fill") +
-  scale_fill_brewer(palette = "Spectral") +
-  scale_color_brewer(palette = "Spectral") +
-  ggtitle("Distribution of Loans by Occupation and Amount") +
-  theme(plot.title = element_text(hjust = 0.5, lineheight =  .8,
-                                  face = 'bold')) +
-  theme(panel.grid = element_blank(), panel.border = element_blank(),
-        panel.background = element_blank(), 
-        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) + 
-       
-  xlab("Loans less than $15,000") +
-  ylab("Density")
+```{r echo=FALSE, fig.height=8, fig.width=8, message=FALSE, warning=FALSE}
+#takes modified data and plots density of loan distribution by 
+#Occupation and Amount.
+
+ggplot(sv, aes(OccupationGroup, fill = LoanGroup)) +
+  geom_histogram(stat = 'count') +
+  four_five +
+  xlab("Occupations") +
+  ylab("Loans by Amount") +
+  ggtitle("Loans by Occupation and Amount")
+
 
 ```
+
 
 ### Description One
 
@@ -1422,7 +1388,7 @@ ggplot(aes(x =LoanGroup, y =  CreditCombined, fill = Combined.range),
   geom_boxplot() +
   coord_flip() +
   facet_wrap(~OccupationGroup) +
-  ggtitle("Loans by Amount, Occupation and Credit Score") +
+  ggtitle("Loans Amount by Credit Score") +
   xlab("Loan Amount") +
   ylab("Credit Score") +
   guides(fill = guide_legend(title = " Credit Score Range")) +
@@ -1484,12 +1450,12 @@ determine the best loans to back and what loans to avoid.
 #### Sources
 
 
-- https://en.wikipedia.org/wiki/International_Standard_Classification_of_Occupations
+- [ISCO](https://en.wikipedia.org/wiki/International_Standard_Classification_of_Occupations)
 
-- https://www.prosper.com/plp/loans/loan-types/
+- [Prosper Loan Types](https://www.prosper.com/plp/loans/loan-types/)
 
-- http://r.789695.n4.nabble.com/Apostrophes-in-R-Commander-in-recode-td3704453.html
+- [Apostrophes in R](http://r.789695.n4.nabble.com/Apostrophes-in-R-Commander-in-recode-td3704453.html)
 
-- https://www.stat.berkeley.edu/classes/s133/factors.html
+- [Factors](https://www.stat.berkeley.edu/classes/s133/factors.html)
 
-- https://www.cnbc.com/quotes/?symbol=.SPX
+- [S&P 500](https://www.cnbc.com/quotes/?symbol=.SPX)
